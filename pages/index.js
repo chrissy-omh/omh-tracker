@@ -3,14 +3,7 @@ import { useState, useEffect } from 'react'
 import { Layout, Card, Spinner } from '../components/shared'
 
 const TABS = [
-  { id: 'pages', label: 'Pages' },
-]
-
-const TIME_FILTERS = [
-  { id: 'today', label: 'Today' },
-  { id: '7d', label: '7d' },
-  { id: '30d', label: '30d' },
-  { id: 'custom', label: 'Custom' },
+  { id: 'analytics', label: 'Analytics' },
 ]
 
 function makeToken() {
@@ -86,106 +79,141 @@ function LoginForm() {
   )
 }
 
-function PagesTab() {
-  const [filter, setFilter] = useState('today')
-  const [customStart, setCustomStart] = useState('')
-  const [customEnd, setCustomEnd] = useState('')
-  const [rows, setRows] = useState(null)
+function StatCard({ label, value }) {
+  return (
+    <Card>
+      <p className="text-xs text-gray-400 mb-2">{label}</p>
+      <p className="text-2xl font-semibold text-white">{value}</p>
+    </Card>
+  )
+}
+
+function BarChart({ daily }) {
+  const days = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const dateStr = d.toISOString().split('T')[0]
+    const match = daily.find((r) => r.date === dateStr)
+    days.push({
+      date: dateStr,
+      views: match ? match.views : 0,
+      label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    })
+  }
+
+  const maxViews = Math.max(...days.map((d) => d.views), 1)
+  const W = 560
+  const H = 120
+  const LABEL_H = 28
+  const slotW = W / 7
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H + LABEL_H}`}
+      className="w-full"
+      style={{ display: 'block' }}
+    >
+      {days.map((day, i) => {
+        const bw = slotW * 0.6
+        const bx = i * slotW + (slotW - bw) / 2
+        const barH = day.views > 0 ? Math.max((day.views / maxViews) * H, 4) : 0
+        const by = H - barH
+        return (
+          <g key={day.date}>
+            <rect x={bx} y={by} width={bw} height={barH} fill="#3b82f6" rx="2" />
+            <text
+              x={i * slotW + slotW / 2}
+              y={H + 18}
+              textAnchor="middle"
+              fill="#6b7280"
+              fontSize="11"
+              fontFamily="system-ui,sans-serif"
+            >
+              {day.label}
+            </text>
+            {day.views > 0 && (
+              <text
+                x={i * slotW + slotW / 2}
+                y={by - 5}
+                textAnchor="middle"
+                fill="#9ca3af"
+                fontSize="11"
+                fontFamily="system-ui,sans-serif"
+              >
+                {day.views}
+              </text>
+            )}
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+function AnalyticsTab() {
+  const [data, setData] = useState(null)
 
   useEffect(() => {
-    let url
-    if (filter === 'custom') {
-      if (!customStart || !customEnd) return
-      url = `/api/dashboard?filter=custom&start=${customStart}&end=${customEnd}`
-    } else {
-      url = `/api/dashboard?filter=${filter}`
-    }
-
-    setRows(null)
-    fetch(url)
+    fetch('/api/track-data?period=today')
       .then((r) => {
         if (!r.ok) throw new Error(r.status)
         return r.json()
       })
-      .then((data) => setRows(Array.isArray(data) ? data : []))
-      .catch(() => setRows([]))
-  }, [filter, customStart, customEnd])
+      .then((d) => setData(d))
+      .catch(() =>
+        setData({ summary: { pageviews: 0, sessions: 0, pages_per_session: 0, avg_dwell: 0 }, daily: [], top_pages: [] })
+      )
+  }, [])
+
+  if (!data) return <Spinner />
+
+  const { summary, daily, top_pages } = data
 
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <div className="flex gap-1">
-          {TIME_FILTERS.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                filter === f.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:text-white'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-        {filter === 'custom' && (
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              value={customStart}
-              onChange={(e) => setCustomStart(e.target.value)}
-              className="rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
-            />
-            <span className="text-xs text-gray-500">to</span>
-            <input
-              type="date"
-              value={customEnd}
-              onChange={(e) => setCustomEnd(e.target.value)}
-              className="rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
-            />
-          </div>
-        )}
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <StatCard label="Page Views Today" value={summary.pageviews} />
+        <StatCard label="Sessions Today" value={summary.sessions} />
+        <StatCard label="Pages / Session" value={summary.pages_per_session} />
+        <StatCard label="Avg Dwell (s)" value={summary.avg_dwell} />
       </div>
 
-      {rows === null ? (
-        <Spinner />
-      ) : (
-        <div className="rounded-lg border border-gray-800 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-800 bg-gray-900">
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">URL</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Title</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Impressions</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Dwell (s)</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Time</th>
+      <Card>
+        <p className="text-xs font-medium text-gray-400 mb-4">Daily Views — Last 7 Days</p>
+        <BarChart daily={daily} />
+      </Card>
+
+      <div className="rounded-lg border border-gray-800 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-800 bg-gray-900">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Page Title</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">URL</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Views</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Avg Dwell (s)</th>
+            </tr>
+          </thead>
+          <tbody className="bg-gray-900">
+            {top_pages.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-6 text-center text-xs text-gray-500">
+                  No data for today yet.
+                </td>
               </tr>
-            </thead>
-            <tbody className="bg-gray-900">
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-xs text-gray-500">
-                    No tracking data for this period.
-                  </td>
+            ) : (
+              top_pages.map((row, i) => (
+                <tr key={i} className="border-t border-gray-800 hover:bg-gray-800">
+                  <td className="px-4 py-3 text-gray-300 text-xs">{row.page_title}</td>
+                  <td className="px-4 py-3 text-gray-200 font-mono text-xs">{row.url}</td>
+                  <td className="px-4 py-3 text-gray-300">{row.views}</td>
+                  <td className="px-4 py-3 text-gray-300">{row.avg_dwell || '—'}</td>
                 </tr>
-              ) : (
-                rows.map((row, i) => (
-                  <tr key={i} className="border-t border-gray-800 hover:bg-gray-800">
-                    <td className="px-4 py-3 text-gray-200 font-mono text-xs">{row.url}</td>
-                    <td className="px-4 py-3 text-gray-300 text-xs">{row.page_title ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-300">{row.impressions}</td>
-                    <td className="px-4 py-3 text-gray-300">{row.dwell_seconds ?? '—'}</td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">
-                      {row.timestamp ? new Date(row.timestamp).toLocaleString() : '—'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -223,7 +251,7 @@ function Dashboard() {
           Sign out
         </button>
       </div>
-      {activeTab === 'pages' && <PagesTab />}
+      {activeTab === 'analytics' && <AnalyticsTab />}
     </Layout>
   )
 }
