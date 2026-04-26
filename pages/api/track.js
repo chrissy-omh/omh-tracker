@@ -43,17 +43,18 @@ export default async function handler(req, res) {
 
   const { url, impressions } = req.body ?? {}
 
-  try {
-    const row = { url, impressions, timestamp: new Date().toISOString() }
+  const row = { url, impressions, timestamp: new Date().toISOString() }
 
-    if (bigQueryConfigured()) {
+  if (bigQueryConfigured()) {
+    try {
       await logToBigQuery(row)
-    } else {
+      return res.status(200).json({ success: true })
+    } catch {
       memoryStore.push(row)
+      return res.status(200).json({ success: true })
     }
-
-    return res.status(200).json({ success: true })
-  } catch {
-    return res.status(200).json({ success: false })
   }
+
+  memoryStore.push(row)
+  return res.status(200).json({ success: true })
 }
