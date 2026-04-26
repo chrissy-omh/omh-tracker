@@ -2,7 +2,10 @@ import { createHmac } from 'crypto'
 import { useState, useEffect } from 'react'
 import { Layout, Card, Spinner } from '../components/shared'
 
-const TABS = [{ id: 'analytics', label: 'Analytics' }]
+const TABS = [
+  { id: 'analytics', label: 'Analytics' },
+  { id: 'journeys', label: 'Journeys' },
+]
 
 const FILTERS = [
   { id: 'today', label: 'Today' },
@@ -188,6 +191,54 @@ function BarChart({ daily, from, to }) {
   )
 }
 
+function formatDateTime(ts) {
+  if (!ts) return '—'
+  try {
+    return new Date(ts).toLocaleString('en-GB', {
+      day: 'numeric', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    })
+  } catch {
+    return ts
+  }
+}
+
+function SessionCard({ session }) {
+  const { source, session_start, pages, total_duration, page_count } = session
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-block rounded px-2 py-0.5 text-xs font-medium bg-[#61856c] text-white">
+            {source}
+          </span>
+          <span className="text-xs text-[#666666]">{formatDateTime(session_start)}</span>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-[#666666] shrink-0 ml-2">
+          <span>{page_count} page{page_count !== 1 ? 's' : ''}</span>
+          {total_duration > 0 && <span>{total_duration}s</span>}
+        </div>
+      </div>
+      <div className="flex items-center flex-wrap gap-1.5 text-xs">
+        <span className="inline-flex items-center rounded bg-[#f1d05b] px-2 py-0.5 font-medium text-[#333333]">
+          {source}
+        </span>
+        {pages.map((p, i) => (
+          <span key={i} className="inline-flex items-center gap-1">
+            <span className="text-[#bbbbbb]">→</span>
+            <span className="inline-flex items-center rounded border border-[#e8e0d5] bg-[#f7f2ec] px-2 py-0.5 text-[#333333]">
+              {p.url}
+              {p.dwell_seconds > 0 && (
+                <span className="ml-1 text-[#999999]">({p.dwell_seconds}s)</span>
+              )}
+            </span>
+          </span>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 function AnalyticsTab() {
   const [activeFilter, setActiveFilter] = useState('today')
   const [customFrom, setCustomFrom] = useState('')
@@ -336,6 +387,156 @@ function AnalyticsTab() {
   )
 }
 
+function JourneysTab() {
+  const [activeFilter, setActiveFilter] = useState('today')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
+  const [view, setView] = useState('sessions')
+  const [selectedUrl, setSelectedUrl] = useState('')
+  const [page, setPage] = useState(1)
+  const [data, setData] = useState(null)
+  const [pagesList, setPagesList] = useState([])
+
+  useEffect(() => {
+    const { from, to } = getDateRange(activeFilter, customFrom, customTo)
+    if (!from || !to) return
+    setData(null)
+    const urlParam = view === 'byPage' && selectedUrl ? `&url=${encodeURIComponent(selectedUrl)}` : ''
+    fetch(`/api/journeys?from=${from}&to=${to}&page=${page}${urlParam}`)
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json() })
+      .then(d => {
+        setData(d)
+        if (d.pages_list?.length) setPagesList(d.pages_list)
+      })
+      .catch(() => setData({ sessions: [], total: 0, page: 1, pages_list: [] }))
+  }, [activeFilter, customFrom, customTo, view, selectedUrl, page])
+
+  function handleFilterChange(f) { setActiveFilter(f); setPage(1) }
+  function handleViewChange(v) { setView(v); setPage(1); setSelectedUrl('') }
+  function handleUrlChange(u) { setSelectedUrl(u); setPage(1) }
+
+  const sessions = data?.sessions ?? []
+  const total = data?.total ?? 0
+  const totalPages = Math.ceil(total / 20)
+
+  return (
+    <div className="space-y-6">
+      {/* Filter bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex gap-1">
+          {FILTERS.map(f => (
+            <button
+              key={f.id}
+              onClick={() => handleFilterChange(f.id)}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                activeFilter === f.id
+                  ? 'bg-[#61856c] text-white'
+                  : 'bg-transparent text-[#666666] hover:text-[#333333]'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {activeFilter === 'custom' && (
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={customFrom}
+              onChange={e => { setCustomFrom(e.target.value); setPage(1) }}
+              className="rounded bg-white border border-[#e8e0d5] px-2 py-1 text-xs text-[#333333] focus:outline-none focus:border-[#61856c]"
+            />
+            <span className="text-xs text-[#666666]">to</span>
+            <input
+              type="date"
+              value={customTo}
+              onChange={e => { setCustomTo(e.target.value); setPage(1) }}
+              className="rounded bg-white border border-[#e8e0d5] px-2 py-1 text-xs text-[#333333] focus:outline-none focus:border-[#61856c]"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* View toggle */}
+      <div className="flex gap-1">
+        <button
+          onClick={() => handleViewChange('sessions')}
+          className={`px-4 py-1.5 rounded text-xs font-medium transition-colors ${
+            view === 'sessions' ? 'bg-[#61856c] text-white' : 'bg-transparent text-[#666666] hover:text-[#333333]'
+          }`}
+        >
+          All Sessions
+        </button>
+        <button
+          onClick={() => handleViewChange('byPage')}
+          className={`px-4 py-1.5 rounded text-xs font-medium transition-colors ${
+            view === 'byPage' ? 'bg-[#61856c] text-white' : 'bg-transparent text-[#666666] hover:text-[#333333]'
+          }`}
+        >
+          By Page
+        </button>
+      </div>
+
+      {/* By Page URL selector */}
+      {view === 'byPage' && (
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-[#666666] shrink-0">Filter by page</label>
+          <select
+            value={selectedUrl}
+            onChange={e => handleUrlChange(e.target.value)}
+            className="rounded bg-white border border-[#e8e0d5] px-2 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#61856c]"
+          >
+            <option value="">— select a page —</option>
+            {pagesList.map(u => (
+              <option key={u} value={u}>{u}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Sessions */}
+      {data === null ? (
+        <Spinner />
+      ) : view === 'byPage' && !selectedUrl ? (
+        <p className="text-sm text-[#999999] py-8 text-center">Select a page above to see its sessions.</p>
+      ) : sessions.length === 0 ? (
+        <p className="text-sm text-[#999999] py-8 text-center">No sessions for this period.</p>
+      ) : (
+        <>
+          <div className="space-y-3">
+            {sessions.map(s => (
+              <SessionCard key={s.session_id} session={s} />
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-xs text-[#666666]">
+                {(page - 1) * 20 + 1}–{Math.min(page * 20, total)} of {total} sessions
+              </span>
+              <div className="flex gap-2">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage(p => p - 1)}
+                  className="px-3 py-1.5 rounded text-xs font-medium border border-[#e8e0d5] text-[#333333] disabled:opacity-40 hover:bg-[#f0ece6]"
+                >
+                  Previous
+                </button>
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(p => p + 1)}
+                  className="px-3 py-1.5 rounded text-xs font-medium border border-[#e8e0d5] text-[#333333] disabled:opacity-40 hover:bg-[#f0ece6]"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 function Dashboard() {
   const [activeTab, setActiveTab] = useState(TABS[0].id)
 
@@ -370,6 +571,7 @@ function Dashboard() {
         </button>
       </div>
       {activeTab === 'analytics' && <AnalyticsTab />}
+      {activeTab === 'journeys' && <JourneysTab />}
     </Layout>
   )
 }
