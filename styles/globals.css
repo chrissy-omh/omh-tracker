@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gray-950: #030712;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
