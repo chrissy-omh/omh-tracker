@@ -1,6 +1,10 @@
 import { createHmac } from 'crypto'
-import { useState } from 'react'
-import { Layout, Card } from '../components/shared'
+import { useState, useEffect } from 'react'
+import { Layout, Card, Spinner } from '../components/shared'
+
+const TABS = [
+  { id: 'pages', label: 'Pages' },
+]
 
 function makeToken() {
   return createHmac('sha256', process.env.SESSION_SECRET || 'dev-secret')
@@ -75,7 +79,57 @@ function LoginForm() {
   )
 }
 
+function PagesTab() {
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/track-data')
+      .then((r) => r.json())
+      .then((data) => setRows(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <Spinner />
+
+  return (
+    <Card className="overflow-hidden p-0">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-800">
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">URL</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Impressions</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={3} className="px-4 py-6 text-center text-xs text-gray-500">
+                No tracking data yet.
+              </td>
+            </tr>
+          ) : (
+            rows.map((row, i) => (
+              <tr key={i} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40">
+                <td className="px-4 py-3 text-gray-200 font-mono text-xs">{row.url}</td>
+                <td className="px-4 py-3 text-gray-300">{row.impressions}</td>
+                <td className="px-4 py-3 text-gray-400 text-xs">
+                  {new Date(row.timestamp).toLocaleString()}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </Card>
+  )
+}
+
 function Dashboard() {
+  const [activeTab, setActiveTab] = useState(TABS[0].id)
+
   async function handleLogout() {
     await fetch('/api/auth', { method: 'DELETE' })
     window.location.reload()
@@ -84,7 +138,21 @@ function Dashboard() {
   return (
     <Layout title="OMH Tracker">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-white">Dashboard</h2>
+        <div className="flex gap-1">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'bg-gray-800 text-white'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
         <button
           onClick={handleLogout}
           className="text-xs text-gray-400 hover:text-white"
@@ -92,11 +160,7 @@ function Dashboard() {
           Sign out
         </button>
       </div>
-      <Card>
-        <p className="text-sm text-gray-400">
-          Welcome to OMH Tracker. Add your data sources and tabs here.
-        </p>
-      </Card>
+      {activeTab === 'pages' && <PagesTab />}
     </Layout>
   )
 }

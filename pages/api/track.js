@@ -1,12 +1,11 @@
 import { getBigQueryClient } from '../../lib/bigquery'
+import { memoryStore } from '../../lib/store'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 }
-
-const memoryStore = []
 
 function bigQueryConfigured() {
   return !!(
