@@ -211,7 +211,7 @@ function AnalyticsTab() {
       )
   }, [activeFilter, customFrom, customTo])
 
-  const { summary = {}, daily = [], top_pages = [] } = data ?? {}
+  const { summary = {}, daily = [], top_pages = [], sources = [] } = data ?? {}
 
   return (
     <div className="space-y-6">
@@ -294,6 +294,36 @@ function AnalyticsTab() {
                       <td className="px-4 py-3 text-gray-200 font-mono text-xs">{row.url}</td>
                       <td className="px-4 py-3 text-gray-300">{row.views}</td>
                       <td className="px-4 py-3 text-gray-300">{row.avg_dwell || '—'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Traffic sources */}
+          <div className="rounded-lg border border-gray-800 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-800 bg-gray-900">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Source</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Visits</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">% of Total</th>
+                </tr>
+              </thead>
+              <tbody className="bg-gray-900">
+                {sources.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-6 text-center text-xs text-gray-500">
+                      No data for this period.
+                    </td>
+                  </tr>
+                ) : (
+                  sources.map((row, i) => (
+                    <tr key={i} className="border-t border-gray-800 hover:bg-gray-800">
+                      <td className="px-4 py-3 text-gray-300 text-xs">{row.source}</td>
+                      <td className="px-4 py-3 text-gray-300">{row.visits}</td>
+                      <td className="px-4 py-3 text-gray-400 text-xs">{row.pct}%</td>
                     </tr>
                   ))
                 )}

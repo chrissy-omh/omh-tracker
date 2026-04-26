@@ -25,7 +25,7 @@ async function getBigQueryAnalytics(from, to) {
   const tbl = process.env.BIGQUERY_TABLE
   const params = { from, to }
 
-  const [[summaryRows], [dailyRows], [topRows]] = await Promise.all([
+  const [[summaryRows], [dailyRows], [topRows], [sourceRows]] = await Promise.all([
     bq.query({
       query: `
         SELECT
@@ -64,6 +64,25 @@ async function getBigQueryAnalytics(from, to) {
       `,
       params,
     }),
+    bq.query({
+      query: `
+        SELECT
+          CASE
+            WHEN referrer IS NULL OR referrer = '' THEN 'Direct'
+            WHEN LOWER(referrer) LIKE '%google%' THEN 'Google Search'
+            WHEN LOWER(referrer) LIKE '%facebook.com%' THEN 'Facebook'
+            WHEN LOWER(referrer) LIKE '%instagram.com%' THEN 'Instagram'
+            WHEN LOWER(referrer) LIKE '%pinterest.com%' THEN 'Pinterest'
+            ELSE 'Other'
+          END AS source,
+          COUNT(*) AS visits
+        FROM \`${ds}.${tbl}\`
+        WHERE DATE(timestamp) >= @from AND DATE(timestamp) <= @to
+        GROUP BY source
+        ORDER BY visits DESC
+      `,
+      params,
+    }),
   ])
 
   const s = summaryRows[0] ?? {}
@@ -73,6 +92,8 @@ async function getBigQueryAnalytics(from, to) {
   const pages_per_session =
     sessions > 0 ? Math.round((pageviews / sessions) * 10) / 10 : 0
 
+  const totalVisits = sourceRows.reduce((s, r) => s + toNum(r.visits), 0)
+
   return {
     summary: { pageviews, sessions, pages_per_session, avg_dwell },
     daily: dailyRows.map((r) => ({ date: r.date, views: toNum(r.views) })),
@@ -81,6 +102,11 @@ async function getBigQueryAnalytics(from, to) {
       url: r.url,
       views: toNum(r.views),
       avg_dwell: toNum(r.avg_dwell),
+    })),
+    sources: sourceRows.map((r) => ({
+      source: r.source,
+      visits: toNum(r.visits),
+      pct: totalVisits > 0 ? Math.round((toNum(r.visits) / totalVisits) * 100) : 0,
     })),
   }
 }
@@ -135,7 +161,31 @@ function getMemoryAnalytics(from, to) {
     .sort((a, b) => b.views - a.views)
     .slice(0, 50)
 
-  return { summary: { pageviews, sessions, pages_per_session, avg_dwell }, daily, top_pages }
+  function classifyReferrer(ref) {
+    if (!ref) return 'Direct'
+    const r = ref.toLowerCase()
+    if (r.includes('google')) return 'Google Search'
+    if (r.includes('facebook.com')) return 'Facebook'
+    if (r.includes('instagram.com')) return 'Instagram'
+    if (r.includes('pinterest.com')) return 'Pinterest'
+    return 'Other'
+  }
+
+  const sourceMap = {}
+  rows.forEach((r) => {
+    const s = classifyReferrer(r.referrer)
+    sourceMap[s] = (sourceMap[s] ?? 0) + 1
+  })
+  const totalVisits = rows.length
+  const sources = Object.entries(sourceMap)
+    .map(([source, visits]) => ({
+      source,
+      visits,
+      pct: totalVisits > 0 ? Math.round((visits / totalVisits) * 100) : 0,
+    }))
+    .sort((a, b) => b.visits - a.visits)
+
+  return { summary: { pageviews, sessions, pages_per_session, avg_dwell }, daily, top_pages, sources }
 }
 
 export default async function handler(req, res) {

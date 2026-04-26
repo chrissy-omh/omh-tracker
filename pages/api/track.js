@@ -26,8 +26,8 @@ async function logToBigQuery(row) {
   const bq = getBigQueryClient()
   const query = `
     INSERT INTO \`${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-    (url, impressions, timestamp, session_id, dwell_seconds, page_title)
-    VALUES (@url, @impressions, TIMESTAMP(@timestamp), @session_id, @dwell_seconds, @page_title)
+    (url, impressions, timestamp, session_id, dwell_seconds, page_title, referrer)
+    VALUES (@url, @impressions, TIMESTAMP(@timestamp), @session_id, @dwell_seconds, @page_title, @referrer)
   `
   await bq.query({
     query,
@@ -38,6 +38,7 @@ async function logToBigQuery(row) {
       session_id: row.session_id ?? null,
       dwell_seconds: row.dwell_seconds ?? null,
       page_title: row.page_title ?? null,
+      referrer: row.referrer ?? null,
     },
   })
 }
@@ -59,7 +60,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true })
   }
 
-  const { url, impressions, session_id, dwell_seconds, page_title } = req.body ?? {}
+  const { url, impressions, session_id, dwell_seconds, page_title, referrer } = req.body ?? {}
 
   const row = {
     url,
@@ -68,6 +69,7 @@ export default async function handler(req, res) {
     session_id: session_id ?? null,
     dwell_seconds: dwell_seconds ?? null,
     page_title: page_title ?? null,
+    referrer: referrer ?? null,
   }
 
   if (bigQueryConfigured()) {

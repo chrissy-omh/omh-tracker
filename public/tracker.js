@@ -15,6 +15,7 @@
         session_id: sessionId,
         dwell_seconds: dwell,
         page_title: document.title || '',
+        referrer: document.referrer || '',
       };
       var body = JSON.stringify(payload);
       fetch('https://omh-tracker.vercel.app/api/track', {
