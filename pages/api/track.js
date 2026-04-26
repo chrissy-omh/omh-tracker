@@ -9,7 +9,7 @@ const CORS_HEADERS = {
 
 function bigQueryConfigured() {
   return !!(
-    process.env.BIGQUERY_PROJECT_ID &&
+    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON &&
     process.env.BIGQUERY_DATASET &&
     process.env.BIGQUERY_TABLE
   )
