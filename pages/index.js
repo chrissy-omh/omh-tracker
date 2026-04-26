@@ -2,8 +2,13 @@ import { createHmac } from 'crypto'
 import { useState, useEffect } from 'react'
 import { Layout, Card, Spinner } from '../components/shared'
 
-const TABS = [
-  { id: 'analytics', label: 'Analytics' },
+const TABS = [{ id: 'analytics', label: 'Analytics' }]
+
+const FILTERS = [
+  { id: 'today', label: 'Today' },
+  { id: '7d', label: 'Last 7 Days' },
+  { id: 'month', label: 'This Month' },
+  { id: 'custom', label: 'Custom Range' },
 ]
 
 function makeToken() {
@@ -16,6 +21,28 @@ export async function getServerSideProps({ req }) {
   const token = req.cookies?.omh_session
   const valid = !!token && token === makeToken()
   return { props: { authenticated: valid } }
+}
+
+function toDateStr(d) {
+  return d.toISOString().split('T')[0]
+}
+
+function getDateRange(filter, customFrom, customTo) {
+  const today = new Date()
+  const todayStr = toDateStr(today)
+  if (filter === '7d') {
+    const from = new Date(today)
+    from.setDate(from.getDate() - 6)
+    return { from: toDateStr(from), to: todayStr }
+  }
+  if (filter === 'month') {
+    const from = new Date(today.getFullYear(), today.getMonth(), 1)
+    return { from: toDateStr(from), to: todayStr }
+  }
+  if (filter === 'custom') {
+    return { from: customFrom, to: customTo }
+  }
+  return { from: todayStr, to: todayStr }
 }
 
 function LoginForm() {
@@ -48,9 +75,7 @@ function LoginForm() {
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
       <div className="w-full max-w-sm">
-        <h1 className="text-xl font-semibold text-white text-center mb-6">
-          OMH Tracker
-        </h1>
+        <h1 className="text-xl font-semibold text-white text-center mb-6">OMH Tracker</h1>
         <Card>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -83,62 +108,74 @@ function StatCard({ label, value }) {
   return (
     <Card>
       <p className="text-xs text-gray-400 mb-2">{label}</p>
-      <p className="text-2xl font-semibold text-white">{value}</p>
+      <p className="text-2xl font-semibold text-white">{value ?? 0}</p>
     </Card>
   )
 }
 
-function BarChart({ daily }) {
-  const days = []
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    const dateStr = d.toISOString().split('T')[0]
+function BarChart({ daily, from, to }) {
+  if (!from || !to) return null
+
+  const allDays = []
+  const cursor = new Date(from + 'T00:00:00Z')
+  const end = new Date(to + 'T00:00:00Z')
+  while (cursor <= end) {
+    const dateStr = toDateStr(cursor)
     const match = daily.find((r) => r.date === dateStr)
-    days.push({
-      date: dateStr,
-      views: match ? match.views : 0,
-      label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    })
+    allDays.push({ date: dateStr, views: match ? match.views : 0 })
+    cursor.setUTCDate(cursor.getUTCDate() + 1)
   }
 
-  const maxViews = Math.max(...days.map((d) => d.views), 1)
+  const n = allDays.length
+  const maxViews = Math.max(...allDays.map((d) => d.views), 1)
   const W = 560
   const H = 120
   const LABEL_H = 28
-  const slotW = W / 7
+  const slotW = W / n
+
+  function shouldShowLabel(i) {
+    if (n <= 7) return true
+    if (n <= 14) return i % 2 === 0
+    if (n <= 21) return i % 3 === 0
+    return i % Math.ceil(n / 7) === 0 || i === n - 1
+  }
+
+  function shortLabel(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00Z')
+    return n <= 14
+      ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+      : d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', timeZone: 'UTC' })
+  }
 
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H + LABEL_H}`}
-      className="w-full"
-      style={{ display: 'block' }}
-    >
-      {days.map((day, i) => {
-        const bw = slotW * 0.6
+    <svg viewBox={`0 0 ${W} ${H + LABEL_H}`} className="w-full" style={{ display: 'block' }}>
+      {allDays.map((day, i) => {
+        const bw = Math.max(slotW * 0.6, 2)
         const bx = i * slotW + (slotW - bw) / 2
         const barH = day.views > 0 ? Math.max((day.views / maxViews) * H, 4) : 0
         const by = H - barH
         return (
           <g key={day.date}>
             <rect x={bx} y={by} width={bw} height={barH} fill="#3b82f6" rx="2" />
-            <text
-              x={i * slotW + slotW / 2}
-              y={H + 18}
-              textAnchor="middle"
-              fill="#6b7280"
-              fontSize="11"
-              fontFamily="system-ui,sans-serif"
-            >
-              {day.label}
-            </text>
-            {day.views > 0 && (
+            {shouldShowLabel(i) && (
               <text
                 x={i * slotW + slotW / 2}
-                y={by - 5}
+                y={H + 18}
+                textAnchor="middle"
+                fill="#6b7280"
+                fontSize="10"
+                fontFamily="system-ui,sans-serif"
+              >
+                {shortLabel(day.date)}
+              </text>
+            )}
+            {day.views > 0 && n <= 14 && (
+              <text
+                x={i * slotW + slotW / 2}
+                y={by - 4}
                 textAnchor="middle"
                 fill="#9ca3af"
-                fontSize="11"
+                fontSize="10"
                 fontFamily="system-ui,sans-serif"
               >
                 {day.views}
@@ -152,10 +189,18 @@ function BarChart({ daily }) {
 }
 
 function AnalyticsTab() {
+  const [activeFilter, setActiveFilter] = useState('today')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
   const [data, setData] = useState(null)
+  const [currentRange, setCurrentRange] = useState({ from: '', to: '' })
 
   useEffect(() => {
-    fetch('/api/track-data?period=today')
+    const { from, to } = getDateRange(activeFilter, customFrom, customTo)
+    if (!from || !to) return
+    setData(null)
+    setCurrentRange({ from, to })
+    fetch(`/api/track-data?from=${from}&to=${to}`)
       .then((r) => {
         if (!r.ok) throw new Error(r.status)
         return r.json()
@@ -164,56 +209,99 @@ function AnalyticsTab() {
       .catch(() =>
         setData({ summary: { pageviews: 0, sessions: 0, pages_per_session: 0, avg_dwell: 0 }, daily: [], top_pages: [] })
       )
-  }, [])
+  }, [activeFilter, customFrom, customTo])
 
-  if (!data) return <Spinner />
-
-  const { summary, daily, top_pages } = data
+  const { summary = {}, daily = [], top_pages = [] } = data ?? {}
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Page Views Today" value={summary.pageviews} />
-        <StatCard label="Sessions Today" value={summary.sessions} />
-        <StatCard label="Pages / Session" value={summary.pages_per_session} />
-        <StatCard label="Avg Dwell (s)" value={summary.avg_dwell} />
+      {/* Filter bar */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex gap-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setActiveFilter(f.id)}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                activeFilter === f.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-400 hover:text-white'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {activeFilter === 'custom' && (
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => setCustomFrom(e.target.value)}
+              className="rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
+            />
+            <span className="text-xs text-gray-500">to</span>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => setCustomTo(e.target.value)}
+              className="rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        )}
       </div>
 
-      <Card>
-        <p className="text-xs font-medium text-gray-400 mb-4">Daily Views — Last 7 Days</p>
-        <BarChart daily={daily} />
-      </Card>
+      {data === null ? (
+        <Spinner />
+      ) : (
+        <>
+          {/* Summary cards */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <StatCard label="Page Views" value={summary.pageviews} />
+            <StatCard label="Sessions" value={summary.sessions} />
+            <StatCard label="Pages / Session" value={summary.pages_per_session} />
+            <StatCard label="Avg Dwell (s)" value={summary.avg_dwell} />
+          </div>
 
-      <div className="rounded-lg border border-gray-800 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-800 bg-gray-900">
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Page Title</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">URL</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Views</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Avg Dwell (s)</th>
-            </tr>
-          </thead>
-          <tbody className="bg-gray-900">
-            {top_pages.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-xs text-gray-500">
-                  No data for today yet.
-                </td>
-              </tr>
-            ) : (
-              top_pages.map((row, i) => (
-                <tr key={i} className="border-t border-gray-800 hover:bg-gray-800">
-                  <td className="px-4 py-3 text-gray-300 text-xs">{row.page_title}</td>
-                  <td className="px-4 py-3 text-gray-200 font-mono text-xs">{row.url}</td>
-                  <td className="px-4 py-3 text-gray-300">{row.views}</td>
-                  <td className="px-4 py-3 text-gray-300">{row.avg_dwell || '—'}</td>
+          {/* Bar chart */}
+          <Card>
+            <p className="text-xs font-medium text-gray-400 mb-4">Daily Views</p>
+            <BarChart daily={daily} from={currentRange.from} to={currentRange.to} />
+          </Card>
+
+          {/* Top pages */}
+          <div className="rounded-lg border border-gray-800 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-800 bg-gray-900">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Page Title</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">URL</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Views</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Avg Dwell (s)</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody className="bg-gray-900">
+                {top_pages.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-6 text-center text-xs text-gray-500">
+                      No data for this period.
+                    </td>
+                  </tr>
+                ) : (
+                  top_pages.map((row, i) => (
+                    <tr key={i} className="border-t border-gray-800 hover:bg-gray-800">
+                      <td className="px-4 py-3 text-gray-300 text-xs">{row.page_title}</td>
+                      <td className="px-4 py-3 text-gray-200 font-mono text-xs">{row.url}</td>
+                      <td className="px-4 py-3 text-gray-300">{row.views}</td>
+                      <td className="px-4 py-3 text-gray-300">{row.avg_dwell || '—'}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   )
 }
