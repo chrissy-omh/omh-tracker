@@ -26,12 +26,19 @@ async function logToBigQuery(row) {
   const bq = getBigQueryClient()
   const query = `
     INSERT INTO \`${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
-    (url, impressions, timestamp)
-    VALUES (@url, @impressions, TIMESTAMP(@timestamp))
+    (url, impressions, timestamp, session_id, dwell_seconds, page_title)
+    VALUES (@url, @impressions, TIMESTAMP(@timestamp), @session_id, @dwell_seconds, @page_title)
   `
   await bq.query({
     query,
-    params: { url: row.url, impressions: row.impressions, timestamp: row.timestamp },
+    params: {
+      url: row.url,
+      impressions: row.impressions,
+      timestamp: row.timestamp,
+      session_id: row.session_id ?? null,
+      dwell_seconds: row.dwell_seconds ?? null,
+      page_title: row.page_title ?? null,
+    },
   })
 }
 
