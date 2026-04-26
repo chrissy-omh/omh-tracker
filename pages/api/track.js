@@ -52,9 +52,16 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true })
   }
 
-  const { url, impressions } = req.body ?? {}
+  const { url, impressions, session_id, dwell_seconds, page_title } = req.body ?? {}
 
-  const row = { url, impressions, timestamp: new Date().toISOString() }
+  const row = {
+    url,
+    impressions,
+    timestamp: new Date().toISOString(),
+    session_id: session_id ?? null,
+    dwell_seconds: dwell_seconds ?? null,
+    page_title: page_title ?? null,
+  }
 
   if (bigQueryConfigured()) {
     try {

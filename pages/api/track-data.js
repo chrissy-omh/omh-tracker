@@ -12,7 +12,7 @@ function bigQueryConfigured() {
 async function queryBigQuery() {
   const bq = getBigQueryClient()
   const query = `
-    SELECT url, impressions, timestamp
+    SELECT url, impressions, timestamp, session_id, dwell_seconds, page_title
     FROM \`${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
     ORDER BY timestamp DESC
     LIMIT 1000
@@ -22,6 +22,9 @@ async function queryBigQuery() {
     url: r.url,
     impressions: r.impressions,
     timestamp: r.timestamp?.value ?? r.timestamp,
+    session_id: r.session_id ?? null,
+    dwell_seconds: r.dwell_seconds ?? null,
+    page_title: r.page_title ?? null,
   }))
 }
 
