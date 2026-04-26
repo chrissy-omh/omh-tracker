@@ -84,7 +84,7 @@ function LoginForm() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded bg-gray-800 border border-gray-700 px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                className="w-full rounded bg-gray-800 border border-gray-700 px-3 py-2 text-sm text-white focus:outline-none focus:border-yellow-500"
                 autoFocus
                 required
               />
@@ -93,7 +93,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-4 py-2 text-sm font-medium text-white"
+              className="w-full rounded bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 px-4 py-2 text-sm font-medium text-white"
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
@@ -156,7 +156,7 @@ function BarChart({ daily, from, to }) {
         const by = H - barH
         return (
           <g key={day.date}>
-            <rect x={bx} y={by} width={bw} height={barH} fill="#3b82f6" rx="2" />
+            <rect x={bx} y={by} width={bw} height={barH} fill="#eab308" rx="2" />
             {shouldShowLabel(i) && (
               <text
                 x={i * slotW + slotW / 2}
@@ -224,7 +224,7 @@ function AnalyticsTab() {
               onClick={() => setActiveFilter(f.id)}
               className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                 activeFilter === f.id
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-yellow-500 text-gray-950'
                   : 'bg-gray-800 text-gray-400 hover:text-white'
               }`}
             >
@@ -238,14 +238,14 @@ function AnalyticsTab() {
               type="date"
               value={customFrom}
               onChange={(e) => setCustomFrom(e.target.value)}
-              className="rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
+              className="rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-yellow-500"
             />
             <span className="text-xs text-gray-500">to</span>
             <input
               type="date"
               value={customTo}
               onChange={(e) => setCustomTo(e.target.value)}
-              className="rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
+              className="rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-yellow-500"
             />
           </div>
         )}
