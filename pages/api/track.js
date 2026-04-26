@@ -17,8 +17,15 @@ function bigQueryConfigured() {
 
 async function logToBigQuery(row) {
   const bq = getBigQueryClient()
-  const table = bq.dataset(process.env.BIGQUERY_DATASET).table(process.env.BIGQUERY_TABLE)
-  await table.insert([row])
+  const query = `
+    INSERT INTO \`${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
+    (url, impressions, timestamp)
+    VALUES (@url, @impressions, TIMESTAMP(@timestamp))
+  `
+  await bq.query({
+    query,
+    params: { url: row.url, impressions: row.impressions, timestamp: row.timestamp },
+  })
 }
 
 export default async function handler(req, res) {
