@@ -80,50 +80,55 @@ function LoginForm() {
 }
 
 function PagesTab() {
-  const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [rows, setRows] = useState(null)
 
   useEffect(() => {
     fetch('/api/track-data')
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(r.status)
+        return r.json()
+      })
       .then((data) => setRows(Array.isArray(data) ? data : []))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+      .catch(() => setRows([]))
   }, [])
 
-  if (loading) return <Spinner />
+  if (rows === null) return <Spinner />
 
   return (
-    <Card className="overflow-hidden p-0">
+    <div className="rounded-lg border border-gray-800 overflow-hidden">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-800">
+          <tr className="border-b border-gray-800 bg-gray-900">
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">URL</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Title</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Impressions</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Dwell (s)</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Time</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="bg-gray-900">
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={3} className="px-4 py-6 text-center text-xs text-gray-500">
+              <td colSpan={5} className="px-4 py-6 text-center text-xs text-gray-500">
                 No tracking data yet.
               </td>
             </tr>
           ) : (
             rows.map((row, i) => (
-              <tr key={i} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40">
+              <tr key={i} className="border-t border-gray-800 hover:bg-gray-800">
                 <td className="px-4 py-3 text-gray-200 font-mono text-xs">{row.url}</td>
+                <td className="px-4 py-3 text-gray-300 text-xs">{row.page_title ?? '—'}</td>
                 <td className="px-4 py-3 text-gray-300">{row.impressions}</td>
+                <td className="px-4 py-3 text-gray-300">{row.dwell_seconds ?? '—'}</td>
                 <td className="px-4 py-3 text-gray-400 text-xs">
-                  {new Date(row.timestamp).toLocaleString()}
+                  {row.timestamp ? new Date(row.timestamp).toLocaleString() : '—'}
                 </td>
               </tr>
             ))
           )}
         </tbody>
       </table>
-    </Card>
+    </div>
   )
 }
 
