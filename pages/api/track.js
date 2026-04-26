@@ -7,7 +7,14 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
+const BLOCKED_IPS = new Set(['86.22.88.10'])
+
 const BOT_PATTERN = /googlebot|bingbot|slurp|duckduckbot|baiduspider|yandexbot|bot|crawler|spider|scraper|curl|wget|python-requests/i
+
+function clientIp(req) {
+  const forwarded = req.headers['x-forwarded-for']
+  return (forwarded ? forwarded.split(',')[0] : req.socket?.remoteAddress ?? '').trim()
+}
 
 function isBot(req) {
   const ua = req.headers['user-agent'] ?? ''
@@ -56,7 +63,7 @@ export default async function handler(req, res) {
     return res.status(405).end()
   }
 
-  if (isBot(req)) {
+  if (isBot(req) || BLOCKED_IPS.has(clientIp(req))) {
     return res.status(200).json({ success: true })
   }
 
