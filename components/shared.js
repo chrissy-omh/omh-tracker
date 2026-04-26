@@ -11,9 +11,9 @@ export function PageHead({ title = 'OMH Tracker' }) {
 
 export function Layout({ children, title }) {
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
+    <div className="min-h-screen bg-[#f7f2ec] text-[#333333]">
       <PageHead title={title} />
-      <header className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+      <header className="bg-[#61856c] px-6 py-4 flex items-center justify-between">
         <span className="text-sm font-semibold tracking-wide text-white">
           OMH Tracker
         </span>
@@ -25,7 +25,7 @@ export function Layout({ children, title }) {
 
 export function Card({ children, className = '' }) {
   return (
-    <div className={`rounded-lg border border-gray-800 bg-gray-900 p-4 ${className}`}>
+    <div className={`rounded-lg border border-[#e8e0d5] bg-white p-4 ${className}`}>
       {children}
     </div>
   )
@@ -34,7 +34,7 @@ export function Card({ children, className = '' }) {
 export function Spinner() {
   return (
     <div className="flex items-center justify-center p-8">
-      <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-700 border-t-yellow-500" />
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-[#e8e0d5] border-t-[#61856c]" />
     </div>
   )
 }

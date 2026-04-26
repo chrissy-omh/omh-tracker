@@ -73,18 +73,18 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+    <div className="min-h-screen bg-[#f7f2ec] flex items-center justify-center">
       <div className="w-full max-w-sm">
-        <h1 className="text-xl font-semibold text-white text-center mb-6">OMH Tracker</h1>
+        <h1 className="text-xl font-semibold text-[#333333] text-center mb-6">OMH Tracker</h1>
         <Card>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs text-gray-400 mb-1">Password</label>
+              <label className="block text-xs text-[#666666] mb-1">Password</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded bg-gray-800 border border-gray-700 px-3 py-2 text-sm text-white focus:outline-none focus:border-yellow-500"
+                className="w-full rounded bg-white border border-[#e8e0d5] px-3 py-2 text-sm text-[#333333] focus:outline-none focus:border-[#61856c]"
                 autoFocus
                 required
               />
@@ -93,7 +93,7 @@ function LoginForm() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded bg-yellow-500 hover:bg-yellow-400 disabled:opacity-50 px-4 py-2 text-sm font-medium text-white"
+              className="w-full rounded bg-[#61856c] hover:bg-[#4e6e59] disabled:opacity-50 px-4 py-2 text-sm font-medium text-white"
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
@@ -107,8 +107,8 @@ function LoginForm() {
 function StatCard({ label, value }) {
   return (
     <Card>
-      <p className="text-xs text-gray-400 mb-2">{label}</p>
-      <p className="text-2xl font-semibold text-white">{value ?? 0}</p>
+      <p className="text-xs text-[#666666] mb-2">{label}</p>
+      <p className="text-2xl font-semibold text-[#333333]">{value ?? 0}</p>
     </Card>
   )
 }
@@ -162,7 +162,7 @@ function BarChart({ daily, from, to }) {
                 x={i * slotW + slotW / 2}
                 y={H + 18}
                 textAnchor="middle"
-                fill="#6b7280"
+                fill="#999999"
                 fontSize="10"
                 fontFamily="system-ui,sans-serif"
               >
@@ -174,7 +174,7 @@ function BarChart({ daily, from, to }) {
                 x={i * slotW + slotW / 2}
                 y={by - 4}
                 textAnchor="middle"
-                fill="#9ca3af"
+                fill="#aaaaaa"
                 fontSize="10"
                 fontFamily="system-ui,sans-serif"
               >
@@ -224,8 +224,8 @@ function AnalyticsTab() {
               onClick={() => setActiveFilter(f.id)}
               className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                 activeFilter === f.id
-                  ? 'bg-yellow-500 text-gray-950'
-                  : 'bg-gray-800 text-gray-400 hover:text-white'
+                  ? 'bg-[#61856c] text-white'
+                  : 'bg-transparent text-[#666666] hover:text-[#333333]'
               }`}
             >
               {f.label}
@@ -238,14 +238,14 @@ function AnalyticsTab() {
               type="date"
               value={customFrom}
               onChange={(e) => setCustomFrom(e.target.value)}
-              className="rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-yellow-500"
+              className="rounded bg-white border border-[#e8e0d5] px-2 py-1 text-xs text-[#333333] focus:outline-none focus:border-[#61856c]"
             />
-            <span className="text-xs text-gray-500">to</span>
+            <span className="text-xs text-[#666666]">to</span>
             <input
               type="date"
               value={customTo}
               onChange={(e) => setCustomTo(e.target.value)}
-              className="rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-yellow-500"
+              className="rounded bg-white border border-[#e8e0d5] px-2 py-1 text-xs text-[#333333] focus:outline-none focus:border-[#61856c]"
             />
           </div>
         )}
@@ -265,35 +265,35 @@ function AnalyticsTab() {
 
           {/* Bar chart */}
           <Card>
-            <p className="text-xs font-medium text-gray-400 mb-4">Daily Views</p>
+            <p className="text-xs font-medium text-[#666666] mb-4">Daily Views</p>
             <BarChart daily={daily} from={currentRange.from} to={currentRange.to} />
           </Card>
 
           {/* Top pages */}
-          <div className="rounded-lg border border-gray-800 overflow-hidden">
+          <div className="rounded-lg border border-[#e8e0d5] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-800 bg-gray-900">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Page Title</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">URL</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Views</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Avg Dwell (s)</th>
+                <tr className="border-b border-[#e8e0d5] bg-white">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#666666]">Page Title</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#666666]">URL</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#666666]">Views</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#666666]">Avg Dwell (s)</th>
                 </tr>
               </thead>
-              <tbody className="bg-gray-900">
+              <tbody className="bg-white">
                 {top_pages.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-xs text-gray-500">
+                    <td colSpan={4} className="px-4 py-6 text-center text-xs text-[#999999]">
                       No data for this period.
                     </td>
                   </tr>
                 ) : (
                   top_pages.map((row, i) => (
-                    <tr key={i} className="border-t border-gray-800 hover:bg-gray-800">
-                      <td className="px-4 py-3 text-gray-300 text-xs">{row.page_title}</td>
-                      <td className="px-4 py-3 text-gray-200 font-mono text-xs">{row.url}</td>
-                      <td className="px-4 py-3 text-gray-300">{row.views}</td>
-                      <td className="px-4 py-3 text-gray-300">{row.avg_dwell || '—'}</td>
+                    <tr key={i} className="border-t border-[#e8e0d5] hover:bg-[#f7f2ec]">
+                      <td className="px-4 py-3 text-[#333333] text-xs">{row.page_title}</td>
+                      <td className="px-4 py-3 text-[#333333] font-mono text-xs">{row.url}</td>
+                      <td className="px-4 py-3 text-[#333333]">{row.views}</td>
+                      <td className="px-4 py-3 text-[#333333]">{row.avg_dwell || '—'}</td>
                     </tr>
                   ))
                 )}
@@ -302,28 +302,28 @@ function AnalyticsTab() {
           </div>
 
           {/* Traffic sources */}
-          <div className="rounded-lg border border-gray-800 overflow-hidden">
+          <div className="rounded-lg border border-[#e8e0d5] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-800 bg-gray-900">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Source</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Visits</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">% of Total</th>
+                <tr className="border-b border-[#e8e0d5] bg-white">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#666666]">Source</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#666666]">Visits</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-[#666666]">% of Total</th>
                 </tr>
               </thead>
-              <tbody className="bg-gray-900">
+              <tbody className="bg-white">
                 {sources.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-4 py-6 text-center text-xs text-gray-500">
+                    <td colSpan={3} className="px-4 py-6 text-center text-xs text-[#999999]">
                       No data for this period.
                     </td>
                   </tr>
                 ) : (
                   sources.map((row, i) => (
-                    <tr key={i} className="border-t border-gray-800 hover:bg-gray-800">
-                      <td className="px-4 py-3 text-gray-300 text-xs">{row.source}</td>
-                      <td className="px-4 py-3 text-gray-300">{row.visits}</td>
-                      <td className="px-4 py-3 text-gray-400 text-xs">{row.pct}%</td>
+                    <tr key={i} className="border-t border-[#e8e0d5] hover:bg-[#f7f2ec]">
+                      <td className="px-4 py-3 text-[#333333] text-xs">{row.source}</td>
+                      <td className="px-4 py-3 text-[#333333]">{row.visits}</td>
+                      <td className="px-4 py-3 text-[#666666] text-xs">{row.pct}%</td>
                     </tr>
                   ))
                 )}
@@ -354,8 +354,8 @@ function Dashboard() {
               onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-gray-800 text-white'
-                  : 'text-gray-400 hover:text-white'
+                  ? 'bg-[#61856c] text-white'
+                  : 'text-[#666666] hover:text-[#333333]'
               }`}
             >
               {tab.label}
@@ -364,7 +364,7 @@ function Dashboard() {
         </div>
         <button
           onClick={handleLogout}
-          className="text-xs text-gray-400 hover:text-white"
+          className="text-xs text-[#666666] hover:text-[#333333]"
         >
           Sign out
         </button>
