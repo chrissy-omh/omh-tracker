@@ -6,6 +6,13 @@ const TABS = [
   { id: 'pages', label: 'Pages' },
 ]
 
+const TIME_FILTERS = [
+  { id: 'today', label: 'Today' },
+  { id: '7d', label: '7d' },
+  { id: '30d', label: '30d' },
+  { id: 'custom', label: 'Custom' },
+]
+
 function makeToken() {
   return createHmac('sha256', process.env.SESSION_SECRET || 'dev-secret')
     .update(process.env.DASHBOARD_PASSWORD || '')
@@ -80,54 +87,105 @@ function LoginForm() {
 }
 
 function PagesTab() {
+  const [filter, setFilter] = useState('today')
+  const [customStart, setCustomStart] = useState('')
+  const [customEnd, setCustomEnd] = useState('')
   const [rows, setRows] = useState(null)
 
   useEffect(() => {
-    fetch('/api/track-data')
+    let url
+    if (filter === 'custom') {
+      if (!customStart || !customEnd) return
+      url = `/api/dashboard?filter=custom&start=${customStart}&end=${customEnd}`
+    } else {
+      url = `/api/dashboard?filter=${filter}`
+    }
+
+    setRows(null)
+    fetch(url)
       .then((r) => {
         if (!r.ok) throw new Error(r.status)
         return r.json()
       })
       .then((data) => setRows(Array.isArray(data) ? data : []))
       .catch(() => setRows([]))
-  }, [])
-
-  if (rows === null) return <Spinner />
+  }, [filter, customStart, customEnd])
 
   return (
-    <div className="rounded-lg border border-gray-800 overflow-hidden">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-800 bg-gray-900">
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">URL</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Title</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Impressions</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Dwell (s)</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Time</th>
-          </tr>
-        </thead>
-        <tbody className="bg-gray-900">
-          {rows.length === 0 ? (
-            <tr>
-              <td colSpan={5} className="px-4 py-6 text-center text-xs text-gray-500">
-                No tracking data yet.
-              </td>
-            </tr>
-          ) : (
-            rows.map((row, i) => (
-              <tr key={i} className="border-t border-gray-800 hover:bg-gray-800">
-                <td className="px-4 py-3 text-gray-200 font-mono text-xs">{row.url}</td>
-                <td className="px-4 py-3 text-gray-300 text-xs">{row.page_title ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-300">{row.impressions}</td>
-                <td className="px-4 py-3 text-gray-300">{row.dwell_seconds ?? '—'}</td>
-                <td className="px-4 py-3 text-gray-400 text-xs">
-                  {row.timestamp ? new Date(row.timestamp).toLocaleString() : '—'}
-                </td>
+    <div>
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <div className="flex gap-1">
+          {TIME_FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                filter === f.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-800 text-gray-400 hover:text-white'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {filter === 'custom' && (
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={customStart}
+              onChange={(e) => setCustomStart(e.target.value)}
+              className="rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
+            />
+            <span className="text-xs text-gray-500">to</span>
+            <input
+              type="date"
+              value={customEnd}
+              onChange={(e) => setCustomEnd(e.target.value)}
+              className="rounded bg-gray-800 border border-gray-700 px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        )}
+      </div>
+
+      {rows === null ? (
+        <Spinner />
+      ) : (
+        <div className="rounded-lg border border-gray-800 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-800 bg-gray-900">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">URL</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Title</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Impressions</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Dwell (s)</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-400">Time</th>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            </thead>
+            <tbody className="bg-gray-900">
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-xs text-gray-500">
+                    No tracking data for this period.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row, i) => (
+                  <tr key={i} className="border-t border-gray-800 hover:bg-gray-800">
+                    <td className="px-4 py-3 text-gray-200 font-mono text-xs">{row.url}</td>
+                    <td className="px-4 py-3 text-gray-300 text-xs">{row.page_title ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-300">{row.impressions}</td>
+                    <td className="px-4 py-3 text-gray-300">{row.dwell_seconds ?? '—'}</td>
+                    <td className="px-4 py-3 text-gray-400 text-xs">
+                      {row.timestamp ? new Date(row.timestamp).toLocaleString() : '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
