@@ -191,6 +191,10 @@ function BarChart({ daily, from, to }) {
   )
 }
 
+function extractDomain(url) {
+  try { return new URL(url).hostname } catch { return url }
+}
+
 function formatDateTime(ts) {
   if (!ts) return '—'
   try {
@@ -226,12 +230,20 @@ function SessionCard({ session }) {
         {pages.map((p, i) => (
           <span key={i} className="inline-flex items-center gap-1">
             <span className="text-[#bbbbbb]">→</span>
-            <span className="inline-flex items-center rounded border border-[#e8e0d5] bg-[#f7f2ec] px-2 py-0.5 text-[#333333]">
+            <span className={`inline-flex items-center rounded border px-2 py-0.5 ${p.event_type === 'exit_click' ? 'border-[#f1d05b] bg-[#f1d05b] font-medium text-[#333333]' : 'border-[#e8e0d5] bg-[#f7f2ec] text-[#333333]'}`}>
               {p.url}
               {p.dwell_seconds > 0 && (
                 <span className="ml-1 text-[#999999]">({p.dwell_seconds}s)</span>
               )}
             </span>
+            {p.exit_url && (
+              <span className="inline-flex items-center gap-1">
+                <span className="text-[#bbbbbb]">→</span>
+                <span className="inline-flex items-center rounded border border-[#e8e0d5] bg-white px-2 py-0.5 text-[#666666]">
+                  🚪 {extractDomain(p.exit_url)}
+                </span>
+              </span>
+            )}
           </span>
         ))}
       </div>
@@ -393,6 +405,7 @@ function JourneysTab() {
   const [customTo, setCustomTo] = useState('')
   const [view, setView] = useState('sessions')
   const [selectedUrl, setSelectedUrl] = useState('')
+  const [selectedSource, setSelectedSource] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState(null)
   const [pagesList, setPagesList] = useState([])
@@ -402,18 +415,20 @@ function JourneysTab() {
     if (!from || !to) return
     setData(null)
     const urlParam = view === 'byPage' && selectedUrl ? `&url=${encodeURIComponent(selectedUrl)}` : ''
-    fetch(`/api/journeys?from=${from}&to=${to}&page=${page}${urlParam}`)
+    const sourceParam = selectedSource ? `&source=${encodeURIComponent(selectedSource)}` : ''
+    fetch(`/api/journeys?from=${from}&to=${to}&page=${page}${urlParam}${sourceParam}`)
       .then(r => { if (!r.ok) throw new Error(r.status); return r.json() })
       .then(d => {
         setData(d)
         if (d.pages_list?.length) setPagesList(d.pages_list)
       })
       .catch(() => setData({ sessions: [], total: 0, page: 1, pages_list: [] }))
-  }, [activeFilter, customFrom, customTo, view, selectedUrl, page])
+  }, [activeFilter, customFrom, customTo, view, selectedUrl, selectedSource, page])
 
   function handleFilterChange(f) { setActiveFilter(f); setPage(1) }
   function handleViewChange(v) { setView(v); setPage(1); setSelectedUrl('') }
   function handleUrlChange(u) { setSelectedUrl(u); setPage(1) }
+  function handleSourceChange(s) { setSelectedSource(s); setPage(1) }
 
   const sessions = data?.sessions ?? []
   const total = data?.total ?? 0
@@ -475,6 +490,24 @@ function JourneysTab() {
         >
           By Page
         </button>
+      </div>
+
+      {/* Source filter */}
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-[#666666] shrink-0">Source</label>
+        <select
+          value={selectedSource}
+          onChange={e => handleSourceChange(e.target.value)}
+          className="rounded bg-white border border-[#e8e0d5] px-2 py-1.5 text-xs text-[#333333] focus:outline-none focus:border-[#61856c]"
+        >
+          <option value="">All Sources</option>
+          <option value="google">Google Search</option>
+          <option value="facebook">Facebook</option>
+          <option value="instagram">Instagram</option>
+          <option value="pinterest">Pinterest</option>
+          <option value="direct">Direct</option>
+          <option value="other">Other</option>
+        </select>
       </div>
 
       {/* By Page URL selector */}
