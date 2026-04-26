@@ -17,17 +17,12 @@
         page_title: document.title || '',
       };
       var body = JSON.stringify(payload);
-      if (navigator.sendBeacon) {
-        var blob = new Blob([body], { type: 'application/json' });
-        navigator.sendBeacon('https://omh-tracker.vercel.app/api/track', blob);
-      } else {
-        fetch('https://omh-tracker.vercel.app/api/track', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: body,
-          credentials: 'omit',
-        }).catch(function () {});
-      }
+      fetch('https://omh-tracker.vercel.app/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body,
+        credentials: 'omit',
+      }).catch(function () {});
     }
 
     window.addEventListener('beforeunload', function () {
