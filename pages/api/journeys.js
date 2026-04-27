@@ -97,6 +97,7 @@ async function getBigQueryJourneys(from, to, url, source, page) {
       FROM \`${ds}.${tbl}\`
       WHERE ${rowFilter}
       GROUP BY session_id
+      HAVING COUNT(*) >= 2
     )
   `
 
@@ -106,7 +107,7 @@ async function getBigQueryJourneys(from, to, url, source, page) {
         WITH sessions AS (
           SELECT session_id,
             ARRAY_AGG(referrer ORDER BY timestamp ASC LIMIT 1)[SAFE_OFFSET(0)] AS first_referrer
-          FROM \`${ds}.${tbl}\` WHERE ${rowFilter} GROUP BY session_id
+          FROM \`${ds}.${tbl}\` WHERE ${rowFilter} GROUP BY session_id HAVING COUNT(*) >= 2
         )
         SELECT COUNT(*) AS total FROM sessions ${sourceWhere}
       `,
@@ -190,6 +191,7 @@ function getMemoryJourneys(from, to, url, source, page) {
         pages: s.pages,
       }
     })
+    .filter(s => s.page_count >= 2)
     .sort((a, b) => new Date(b.session_start) - new Date(a.session_start))
 
   if (source && SOURCE_LABELS[source]) {
