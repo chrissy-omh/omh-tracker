@@ -29,8 +29,26 @@ function bigQueryConfigured() {
   )
 }
 
+async function isDuplicate(bq, row) {
+  if (!row.session_id || !row.url) return false
+  const ds = process.env.BIGQUERY_DATASET
+  const tbl = process.env.BIGQUERY_TABLE
+  const [[{ cnt }]] = await bq.query({
+    query: `
+      SELECT COUNT(*) AS cnt
+      FROM \`${ds}.${tbl}\`
+      WHERE session_id = @session_id
+        AND url = @url
+        AND timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 60 SECOND)
+    `,
+    params: { session_id: row.session_id, url: row.url },
+  })
+  return Number(typeof cnt === 'object' && 'value' in cnt ? cnt.value : cnt) > 0
+}
+
 async function logToBigQuery(row) {
   const bq = getBigQueryClient()
+  if (await isDuplicate(bq, row)) return false
   const query = `
     INSERT INTO \`${process.env.BIGQUERY_DATASET}.${process.env.BIGQUERY_TABLE}\`
     (url, impressions, timestamp, session_id, dwell_seconds, page_title, referrer, exit_url, event_type)
@@ -50,6 +68,7 @@ async function logToBigQuery(row) {
       event_type: row.event_type ?? null,
     },
   })
+  return true
 }
 
 export default async function handler(req, res) {

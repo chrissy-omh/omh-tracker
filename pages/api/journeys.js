@@ -46,6 +46,20 @@ function buildBqSourceFilter(source) {
   }
 }
 
+function collapseConsecutiveDupes(pages) {
+  if (!pages.length) return pages
+  const result = [{ ...pages[0] }]
+  for (let i = 1; i < pages.length; i++) {
+    const last = result[result.length - 1]
+    if (pages[i].url === last.url) {
+      last.dwell_seconds = Math.max(last.dwell_seconds, pages[i].dwell_seconds)
+    } else {
+      result.push({ ...pages[i] })
+    }
+  }
+  return result
+}
+
 function toStr(v) {
   if (v == null) return ''
   if (typeof v === 'string') return v
@@ -137,14 +151,14 @@ async function getBigQueryJourneys(from, to, url, source, page) {
     session_start: toStr(row.session_start),
     total_duration: toNum(row.total_duration),
     page_count: toNum(row.page_count),
-    pages: (row.pages ?? []).map(p => ({
+    pages: collapseConsecutiveDupes((row.pages ?? []).map(p => ({
       url: toStr(p.url),
       page_title: toStr(p.page_title),
       dwell_seconds: toNum(p.dwell_seconds),
       timestamp: toStr(p.ts),
       exit_url: toStr(p.exit_url),
       event_type: toStr(p.event_type),
-    })),
+    }))),
   }))
 
   return { sessions, total, page, pages_list }
@@ -188,7 +202,7 @@ function getMemoryJourneys(from, to, url, source, page) {
         session_start: s.pages[0]?.timestamp || '',
         total_duration: s.pages.reduce((sum, p) => sum + (p.dwell_seconds || 0), 0),
         page_count: s.pages.length,
-        pages: s.pages,
+        pages: collapseConsecutiveDupes(s.pages),
       }
     })
     .filter(s => s.page_count >= 2)
