@@ -5,6 +5,7 @@ import { Layout, Card, Spinner } from '../components/shared'
 const TABS = [
   { id: 'analytics', label: 'Analytics' },
   { id: 'journeys', label: 'Journeys' },
+  { id: 'insights', label: 'Insights' },
 ]
 
 const FILTERS = [
@@ -570,6 +571,162 @@ function JourneysTab() {
   )
 }
 
+function InsightSection({ title, stats, summary, loading }) {
+  return (
+    <div className="rounded-lg border border-[#e8e0d5] overflow-hidden">
+      <div className="bg-[#61856c] px-5 py-3">
+        <h2 className="text-sm font-semibold text-white">{title}</h2>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-[#e8e0d5]">
+        {/* Stats */}
+        <div className="bg-[#f7f2ec] p-5">{stats}</div>
+        {/* AI summary */}
+        <div className="bg-[#fffbea] p-5">
+          <p className="text-xs font-medium text-[#61856c] mb-2 uppercase tracking-wide">AI Summary</p>
+          {loading ? (
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#e8e0d5] border-t-[#61856c]" />
+              <span className="text-xs text-[#999999]">Generating…</span>
+            </div>
+          ) : (
+            <p className="text-sm text-[#333333] leading-relaxed">{summary}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InsightsTab() {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  function load() {
+    setLoading(true)
+    setData(null)
+    fetch('/api/insights')
+      .then((r) => { if (!r.ok) throw new Error(r.status); return r.json() })
+      .then((d) => setData(d))
+      .catch(() => setData({ stats: { feeders: [], sources: [], high_intent: [] }, summaries: { funnel_feeders: 'Failed to load.', traffic_sources: 'Failed to load.', high_intent: 'Failed to load.' } }))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const stats = data?.stats ?? {}
+  const summaries = data?.summaries ?? {}
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-[#999999]">Last 7 days · AI summaries powered by Claude</p>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="flex items-center gap-1.5 rounded bg-[#61856c] hover:bg-[#4e6e59] disabled:opacity-50 px-3 py-1.5 text-xs font-medium text-white transition-colors"
+        >
+          {loading ? (
+            <>
+              <span className="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent inline-block" />
+              Refreshing…
+            </>
+          ) : (
+            'Refresh'
+          )}
+        </button>
+      </div>
+
+      {/* Section 1 — Funnel Feeders */}
+      <InsightSection
+        title="Content That Drives Funnel Entries"
+        loading={loading}
+        summary={summaries.funnel_feeders}
+        stats={
+          stats.feeders?.length === 0 ? (
+            <p className="text-xs text-[#999999]">No data for the last 7 days.</p>
+          ) : (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#e8e0d5]">
+                  <th className="pb-2 text-left font-medium text-[#666666]">Page</th>
+                  <th className="pb-2 text-right font-medium text-[#666666]">Visits before funnel</th>
+                  <th className="pb-2 text-right font-medium text-[#666666]">Continued %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(stats.feeders ?? []).map((r, i) => (
+                  <tr key={i} className="border-t border-[#e8e0d5]">
+                    <td className="py-2 pr-4 text-[#333333]">{r.page_title}</td>
+                    <td className="py-2 text-right text-[#333333]">{r.visits}</td>
+                    <td className="py-2 text-right text-[#61856c] font-medium">{r.funnel_pct}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        }
+      />
+
+      {/* Section 2 — Traffic Sources */}
+      <InsightSection
+        title="Best Converting Traffic Sources"
+        loading={loading}
+        summary={summaries.traffic_sources}
+        stats={
+          stats.sources?.length === 0 ? (
+            <p className="text-xs text-[#999999]">No data for the last 7 days.</p>
+          ) : (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#e8e0d5]">
+                  <th className="pb-2 text-left font-medium text-[#666666]">Source</th>
+                  <th className="pb-2 text-right font-medium text-[#666666]">Sessions</th>
+                  <th className="pb-2 text-right font-medium text-[#666666]">Pages/session</th>
+                  <th className="pb-2 text-right font-medium text-[#666666]">Hit funnel %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(stats.sources ?? []).map((r, i) => (
+                  <tr key={i} className="border-t border-[#e8e0d5]">
+                    <td className="py-2 pr-4 text-[#333333] font-medium">{r.source}</td>
+                    <td className="py-2 text-right text-[#333333]">{r.visits}</td>
+                    <td className="py-2 text-right text-[#333333]">{r.avg_pages}</td>
+                    <td className="py-2 text-right text-[#61856c] font-medium">{r.funnel_pct}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        }
+      />
+
+      {/* Section 3 — High Intent Readers */}
+      <InsightSection
+        title="High Intent Readers"
+        loading={loading}
+        summary={summaries.high_intent}
+        stats={
+          stats.high_intent?.length === 0 ? (
+            <p className="text-xs text-[#999999]">No sessions with 3+ pages and 60s+ dwell in the last 7 days.</p>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-[#666666] mb-3">Top page combinations from sessions with 3+ pages and 60s+ avg dwell</p>
+              {(stats.high_intent ?? []).map((r, i) => (
+                <div key={i} className="flex items-start gap-3 border-t border-[#e8e0d5] pt-2 first:border-0 first:pt-0">
+                  <span className="shrink-0 rounded bg-[#61856c] px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    ×{r.session_count}
+                  </span>
+                  <p className="text-xs text-[#333333] break-all leading-relaxed">{r.page_combo}</p>
+                </div>
+              ))}
+            </div>
+          )
+        }
+      />
+    </div>
+  )
+}
+
 function Dashboard() {
   const [activeTab, setActiveTab] = useState(TABS[0].id)
 
@@ -605,6 +762,7 @@ function Dashboard() {
       </div>
       {activeTab === 'analytics' && <AnalyticsTab />}
       {activeTab === 'journeys' && <JourneysTab />}
+      {activeTab === 'insights' && <InsightsTab />}
     </Layout>
   )
 }
