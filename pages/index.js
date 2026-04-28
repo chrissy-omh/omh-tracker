@@ -5,7 +5,15 @@ import { Layout, Card, Spinner } from '../components/shared'
 const TABS = [
   { id: 'analytics', label: 'Analytics' },
   { id: 'journeys', label: 'Journeys' },
-  { id: 'insights', label: 'Insights' },
+  { id: 'quiz-funnel', label: 'Quiz Funnel' },
+]
+
+const HOMEBIRD_TYPES = [
+  { id: 'all', label: 'All' },
+  { id: 'ostrich', label: 'Ostrich' },
+  { id: 'swan', label: 'Swan' },
+  { id: 'puffin', label: 'Puffin' },
+  { id: 'owl', label: 'Owl' },
 ]
 
 const FILTERS = [
@@ -571,158 +579,218 @@ function JourneysTab() {
   )
 }
 
-function InsightSection({ title, stats, summary, loading }) {
+function FunnelDiagram({ quizStarts, optinsTotal }) {
+  const W = 600
+  const PAD = 24
+  const STEP_H = 68
+  const GAP_H = 52
+  const cx = W / 2
+  const s1W = W - 2 * PAD
+  const convPct = quizStarts > 0 ? Math.round((optinsTotal / quizStarts) * 100) : 0
+  const dropOff = Math.max(0, quizStarts - optinsTotal)
+  const s2W = quizStarts > 0 ? Math.max(80, Math.round(s1W * (optinsTotal / quizStarts))) : Math.round(s1W / 2)
+  const s3W = Math.max(60, Math.round(s2W * 0.55))
+  const y1t = 0, y1b = STEP_H
+  const y2t = y1b + GAP_H, y2b = y2t + STEP_H
+  const y3t = y2b + GAP_H, y3b = y3t + STEP_H
+  const FONT = 'system-ui,sans-serif'
+
+  function pts(topW, botW, yt, yb) {
+    return `${cx - topW / 2},${yt} ${cx + topW / 2},${yt} ${cx + botW / 2},${yb} ${cx - botW / 2},${yb}`
+  }
+
   return (
-    <div className="rounded-lg border border-[#e8e0d5] overflow-hidden">
-      <div className="bg-[#61856c] px-5 py-3">
-        <h2 className="text-sm font-semibold text-white">{title}</h2>
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-[#e8e0d5]">
-        {/* Stats */}
-        <div className="bg-[#f7f2ec] p-5">{stats}</div>
-        {/* AI summary */}
-        <div className="bg-[#fffbea] p-5">
-          <p className="text-xs font-medium text-[#61856c] mb-2 uppercase tracking-wide">AI Summary</p>
-          {loading ? (
-            <div className="flex items-center gap-2">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#e8e0d5] border-t-[#61856c]" />
-              <span className="text-xs text-[#999999]">Generating…</span>
+    <svg viewBox={`0 0 ${W} ${y3b + 4}`} className="w-full" style={{ maxWidth: 600, display: 'block', margin: '0 auto' }}>
+      <polygon points={pts(s1W, s2W, y1t, y1b)} fill="#61856c" />
+      <text x={cx} y={y1t + STEP_H / 2 + 6} textAnchor="middle" fill="white" fontSize="15" fontWeight="600" fontFamily={FONT}>
+        Quiz Started — {quizStarts.toLocaleString()}
+      </text>
+
+      <text x={cx} y={y1b + 18} textAnchor="middle" fill="#666666" fontSize="11" fontFamily={FONT}>
+        {dropOff.toLocaleString()} dropped off
+      </text>
+      <text x={cx} y={y1b + 35} textAnchor="middle" fill="#d97706" fontSize="13" fontWeight="600" fontFamily={FONT}>
+        {convPct}% continued to optin
+      </text>
+
+      <polygon points={pts(s2W, s3W, y2t, y2b)} fill="#61856c" />
+      <text x={cx} y={y2t + STEP_H / 2 + 6} textAnchor="middle" fill="white" fontSize="15" fontWeight="600" fontFamily={FONT}>
+        Opted In — {optinsTotal.toLocaleString()}
+      </text>
+
+      <text x={cx} y={y2b + GAP_H / 2 + 4} textAnchor="middle" fill="#999999" fontSize="12" fontFamily={FONT}>
+        Purchase tracking coming soon
+      </text>
+
+      <polygon points={pts(s3W, s3W, y3t, y3b)} fill="#e8e0d5" />
+      <text x={cx} y={y3t + STEP_H / 2 + 6} textAnchor="middle" fill="#aaaaaa" fontSize="13" fontFamily={FONT}>
+        Purchased — Coming Soon
+      </text>
+    </svg>
+  )
+}
+
+function HomebirdCards({ optinsByType, noThanksByType }) {
+  const types = ['ostrich', 'swan', 'puffin', 'owl']
+  const total = types.reduce((sum, t) => sum + (optinsByType[t] ?? 0), 0)
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {types.map((t) => {
+        const optins = optinsByType[t] ?? 0
+        const noThanks = noThanksByType[t] ?? 0
+        const pct = total > 0 ? Math.round((optins / total) * 100) : 0
+        const barW = (optins + noThanks) > 0 ? Math.round((optins / (optins + noThanks)) * 100) : 50
+
+        return (
+          <div key={t} className="rounded-lg border border-[#e8e0d5] bg-white p-4">
+            <p className="text-xs font-semibold text-[#61856c] uppercase tracking-wide mb-3">
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </p>
+            <p className="text-3xl font-bold text-[#333333]">{optins}</p>
+            <p className="text-xs text-[#666666] mt-0.5 mb-3">{pct}% of total optins</p>
+            <p className="text-xs text-[#999999] mb-1.5">No thanks: {noThanks}</p>
+            <div className="h-2 rounded-full bg-[#e8e0d5] overflow-hidden">
+              <div className="h-full bg-[#61856c] rounded-full" style={{ width: `${barW}%` }} />
             </div>
-          ) : (
-            <p className="text-sm text-[#333333] leading-relaxed">{summary}</p>
-          )}
-        </div>
-      </div>
+            <div className="flex justify-between text-[10px] text-[#bbbbbb] mt-1">
+              <span>Optin</span>
+              <span>No thanks</span>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-function InsightsTab() {
+function QuizFunnelTab() {
+  const [activeFilter, setActiveFilter] = useState('7d')
+  const [customFrom, setCustomFrom] = useState('')
+  const [customTo, setCustomTo] = useState('')
+  const [activeType, setActiveType] = useState('all')
   const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(false)
 
-  function load() {
-    setLoading(true)
+  useEffect(() => {
+    const { from, to } = getDateRange(activeFilter, customFrom, customTo)
+    if (!from || !to) return
     setData(null)
-    fetch('/api/insights')
+    fetch(`/api/quiz-funnel?from=${from}&to=${to}&type=${activeType}`)
       .then((r) => { if (!r.ok) throw new Error(r.status); return r.json() })
       .then((d) => setData(d))
-      .catch(() => setData({ stats: { feeders: [], sources: [], high_intent: [] }, summaries: { funnel_feeders: 'Failed to load.', traffic_sources: 'Failed to load.', high_intent: 'Failed to load.' } }))
-      .finally(() => setLoading(false))
-  }
+      .catch(() => setData({
+        quiz_starts: 0, optins_total: 0,
+        optins_by_type: { ostrich: 0, swan: 0, puffin: 0, owl: 0 },
+        no_thanks_by_type: { ostrich: 0, swan: 0, puffin: 0, owl: 0 },
+        no_thanks_journeys: [],
+      }))
+  }, [activeFilter, customFrom, customTo, activeType])
 
-  useEffect(() => { load() }, [])
-
-  const stats = data?.stats ?? {}
-  const summaries = data?.summaries ?? {}
+  const { quiz_starts = 0, optins_total = 0, optins_by_type = {}, no_thanks_by_type = {}, no_thanks_journeys = [] } = data ?? {}
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-[#999999]">Last 7 days · AI summaries powered by Claude</p>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-1.5 rounded bg-[#61856c] hover:bg-[#4e6e59] disabled:opacity-50 px-3 py-1.5 text-xs font-medium text-white transition-colors"
-        >
-          {loading ? (
-            <>
-              <span className="h-3 w-3 animate-spin rounded-full border border-white border-t-transparent inline-block" />
-              Refreshing…
-            </>
-          ) : (
-            'Refresh'
-          )}
-        </button>
+      {/* Date filter */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex gap-1">
+          {FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setActiveFilter(f.id)}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                activeFilter === f.id ? 'bg-[#61856c] text-white' : 'bg-transparent text-[#666666] hover:text-[#333333]'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {activeFilter === 'custom' && (
+          <div className="flex items-center gap-2">
+            <input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)}
+              className="rounded bg-white border border-[#e8e0d5] px-2 py-1 text-xs text-[#333333] focus:outline-none focus:border-[#61856c]" />
+            <span className="text-xs text-[#666666]">to</span>
+            <input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)}
+              className="rounded bg-white border border-[#e8e0d5] px-2 py-1 text-xs text-[#333333] focus:outline-none focus:border-[#61856c]" />
+          </div>
+        )}
       </div>
 
-      {/* Section 1 — Funnel Feeders */}
-      <InsightSection
-        title="Content That Drives Funnel Entries"
-        loading={loading}
-        summary={summaries.funnel_feeders}
-        stats={
-          stats.feeders?.length === 0 ? (
-            <p className="text-xs text-[#999999]">No data for the last 7 days.</p>
-          ) : (
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[#e8e0d5]">
-                  <th className="pb-2 text-left font-medium text-[#666666]">Page</th>
-                  <th className="pb-2 text-right font-medium text-[#666666]">Visits before funnel</th>
-                  <th className="pb-2 text-right font-medium text-[#666666]">Continued %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(stats.feeders ?? []).map((r, i) => (
-                  <tr key={i} className="border-t border-[#e8e0d5]">
-                    <td className="py-2 pr-4 text-[#333333]">{r.page_title}</td>
-                    <td className="py-2 text-right text-[#333333]">{r.visits}</td>
-                    <td className="py-2 text-right text-[#61856c] font-medium">{r.funnel_pct}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
-        }
-      />
+      {/* Homebird type filter */}
+      <div className="flex gap-2 flex-wrap">
+        {HOMEBIRD_TYPES.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActiveType(t.id)}
+            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+              activeType === t.id
+                ? 'bg-[#61856c] border-[#61856c] text-white'
+                : 'bg-white border-[#e8e0d5] text-[#666666] hover:border-[#61856c] hover:text-[#61856c]'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-      {/* Section 2 — Traffic Sources */}
-      <InsightSection
-        title="Best Converting Traffic Sources"
-        loading={loading}
-        summary={summaries.traffic_sources}
-        stats={
-          stats.sources?.length === 0 ? (
-            <p className="text-xs text-[#999999]">No data for the last 7 days.</p>
-          ) : (
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-[#e8e0d5]">
-                  <th className="pb-2 text-left font-medium text-[#666666]">Source</th>
-                  <th className="pb-2 text-right font-medium text-[#666666]">Sessions</th>
-                  <th className="pb-2 text-right font-medium text-[#666666]">Pages/session</th>
-                  <th className="pb-2 text-right font-medium text-[#666666]">Hit funnel %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(stats.sources ?? []).map((r, i) => (
-                  <tr key={i} className="border-t border-[#e8e0d5]">
-                    <td className="py-2 pr-4 text-[#333333] font-medium">{r.source}</td>
-                    <td className="py-2 text-right text-[#333333]">{r.visits}</td>
-                    <td className="py-2 text-right text-[#333333]">{r.avg_pages}</td>
-                    <td className="py-2 text-right text-[#61856c] font-medium">{r.funnel_pct}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )
-        }
-      />
+      {data === null ? (
+        <Spinner />
+      ) : (
+        <>
+          {/* Funnel Overview */}
+          <div className="rounded-lg border border-[#e8e0d5] bg-white p-6">
+            <h2 className="text-sm font-semibold text-[#333333] mb-5">Funnel Overview</h2>
+            <FunnelDiagram quizStarts={quiz_starts} optinsTotal={optins_total} />
+          </div>
 
-      {/* Section 3 — High Intent Readers */}
-      <InsightSection
-        title="High Intent Readers"
-        loading={loading}
-        summary={summaries.high_intent}
-        stats={
-          stats.high_intent?.length === 0 ? (
-            <p className="text-xs text-[#999999]">No sessions with 3+ pages and 60s+ dwell in the last 7 days.</p>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-xs text-[#666666] mb-3">Top page combinations from sessions with 3+ pages and 60s+ avg dwell</p>
-              {(stats.high_intent ?? []).map((r, i) => (
-                <div key={i} className="flex items-start gap-3 border-t border-[#e8e0d5] pt-2 first:border-0 first:pt-0">
-                  <span className="shrink-0 rounded bg-[#61856c] px-1.5 py-0.5 text-[10px] font-medium text-white">
-                    ×{r.session_count}
-                  </span>
-                  <p className="text-xs text-[#333333] break-all leading-relaxed">{r.page_combo}</p>
-                </div>
-              ))}
+          {/* Homebird Split */}
+          <div>
+            <h2 className="text-sm font-semibold text-[#333333] mb-3">Homebird Split</h2>
+            <HomebirdCards optinsByType={optins_by_type} noThanksByType={no_thanks_by_type} />
+          </div>
+
+          {/* No Thanks Journeys */}
+          <div>
+            <h2 className="text-sm font-semibold text-[#333333] mb-3">No Thanks Journeys</h2>
+            <div className="rounded-lg border border-[#e8e0d5] overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#e8e0d5] bg-white">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#666666]">Homebird Type</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#666666]">Source</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#666666]">Pages After Hub</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-[#666666]">Duration (s)</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white">
+                  {no_thanks_journeys.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-6 text-center text-xs text-[#999999]">
+                        No no-thanks sessions for this period.
+                      </td>
+                    </tr>
+                  ) : (
+                    no_thanks_journeys.map((j, i) => (
+                      <tr key={i} className="border-t border-[#e8e0d5] hover:bg-[#f7f2ec]">
+                        <td className="px-4 py-3">
+                          <span className="inline-block rounded px-2 py-0.5 text-xs font-medium bg-[#61856c] text-white capitalize">
+                            {j.type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-[#333333]">{j.source}</td>
+                        <td className="px-4 py-3 text-xs text-[#333333] font-mono max-w-xs truncate">
+                          {j.pages_after_hub || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-[#333333]">{j.total_duration || '—'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
-          )
-        }
-      />
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -762,7 +830,7 @@ function Dashboard() {
       </div>
       {activeTab === 'analytics' && <AnalyticsTab />}
       {activeTab === 'journeys' && <JourneysTab />}
-      {activeTab === 'insights' && <InsightsTab />}
+      {activeTab === 'quiz-funnel' && <QuizFunnelTab />}
     </Layout>
   )
 }
